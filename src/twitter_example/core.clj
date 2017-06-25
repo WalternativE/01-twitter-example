@@ -5,6 +5,7 @@
            [overtone.at-at :as overtone]
            [twitter.api.restful :as twitter]
            [twitter.oauth :as twitter-oauth]
+           [net.cgrand.enlive-html :as html]
            [environ.core :refer [env]]))
 
 ; We are generating tweets based on templates, similar to the game Apples to
@@ -12,6 +13,33 @@
 ; We start with two lists of strings: One list contains string with blank
 ; spaces, the other list is used to fill in these spaces.
 
+(defn fetch-url [url]
+  (html/html-resource (java.net.URL. url)))
+
+(defn get-quotes []
+  (map html/text (html/select (fetch-url "http://www.goodreads.com/quotes/tag/existentialism") [:div.quoteText html/text])))
+
+(defn script? [q]
+  (not (or (s/includes? q "<") (s/includes? q ">"))))
+
+(defn filter-for-string [strs]
+  (filter string? strs))
+
+(defn trim-strings [strs]
+  (map s/trim strs))
+
+(defn filter-for-scripts [strs]
+  (filter script? strs))
+
+(defn quoteish? [str]
+  (and (> (.length str) 55) (< (.length str) 120)))
+
+(defn filter-quotes [quotes]
+  (-> quotes
+    (filter-for-string)
+    (trim-strings)
+    (filter-for-scripts)
+    (#(filter quoteish? %))))
 
 ; We define the "templates" - these strings are the skeleton of the tweet
 ; We will later replace every occurence of ___ with a string that we chose
@@ -29,6 +57,11 @@
              "Junk Mail"
              "Pirates"])
 
+(def snarks ["Really?"
+             "I'd like to believe that."
+             "Oh, the dogity."
+             "Ponder that."])
+
 ; generate-sentence returns a random sentence, built by choosing one template
 ; string at random and filling in the blank space (___) with a randomly chosen
 ; string from the blanks list.
@@ -36,6 +69,12 @@
   (let [template (rand-nth templates)
         blank (rand-nth blanks)]
       (s/replace template "___" blank)))
+
+(defn generate-remark-on-reality []
+  (let [template (rand-nth (filter-quotes (get-quotes)))
+        snark (rand-nth snarks)]
+      (str template " " snark)))
+
 
 ; We retrieve the twitter credentials from the profiles.clj file here.
 ; In profiles.clj we defined the "env(ironment)" which we use here
@@ -54,12 +93,14 @@
   (when (and (not-empty text) (<= (count text) 140))
    (try (twitter/statuses-update :oauth-creds twitter-credentials
                                  :params {:status text})
-        (catch Exception e (println "Something went wrong: " (.getMessage e))))))
+        (catch Exception e
+          (do
+            (println "Something went wrong: " (.getMessage e))
+            (.printStackTrace e))))))
 
 ; Generate a sentence and tweet it.
 (defn tweet-sentence []
-  (tweet (generate-sentence)))
-
+  (tweet (generate-remark-on-reality)))
 
 (def my-pool (overtone/mk-pool))
 
