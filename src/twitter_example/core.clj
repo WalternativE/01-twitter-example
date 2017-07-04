@@ -8,16 +8,14 @@
            [net.cgrand.enlive-html :as html]
            [environ.core :refer [env]]))
 
-; We are generating tweets based on templates, similar to the game Apples to
-; Apples: https://en.wikipedia.org/wiki/Apples_to_Apples
-; We start with two lists of strings: One list contains string with blank
-; spaces, the other list is used to fill in these spaces.
-
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
 
+(defn construct-url []
+  (str "http://www.goodreads.com/quotes/tag/existentialism" "?page=" (+ (rand-int 23) 1)))
+
 (defn get-quotes []
-  (map html/text (html/select (fetch-url "http://www.goodreads.com/quotes/tag/existentialism") [:div.quoteText html/text])))
+  (map html/text (html/select (fetch-url (construct-url)) [:div.quoteText html/text])))
 
 (defn script? [q]
   (not (or (s/includes? q "<") (s/includes? q ">"))))
@@ -41,34 +39,18 @@
     (filter-for-scripts)
     (#(filter quoteish? %))))
 
-; We define the "templates" - these strings are the skeleton of the tweet
-; We will later replace every occurence of ___ with a string that we chose
-; randomly from the list "blanks".
-(def templates ["I hear he eats ___"
-                "The police arrested ___ in connection with the robbery."
-                "I don't know if ___ will visit us next Sunday."
-                "She sent a card to ___."
-                "Doing that sort of thing makes you look like ___."])
-
-; Next we define the "blanks"
-(def blanks ["a Haunted House"
-             "Rich Hickey"
-             "a purple dinosaur"
-             "Junk Mail"
-             "Pirates"])
-
 (def snarks ["Really?"
              "I'd like to believe that."
              "Oh, the dogity."
-             "Ponder that."])
-
-; generate-sentence returns a random sentence, built by choosing one template
-; string at random and filling in the blank space (___) with a randomly chosen
-; string from the blanks list.
-(defn generate-sentence []
-  (let [template (rand-nth templates)
-        blank (rand-nth blanks)]
-      (s/replace template "___" blank)))
+             "Ponder that."
+             "Interesting."
+             "I have to research that."
+             "Woof."
+             "Why, though?"
+             "What a conundrum."
+             "Bark..."
+             "Understandable."
+             "Eventually."])
 
 (defn generate-remark-on-reality []
   (let [template (rand-nth (filter-quotes (get-quotes)))
@@ -105,7 +87,7 @@
 (def my-pool (overtone/mk-pool))
 
 (defn -main [& args]
-  ;; every 2 hours
+  ;; every 2 hours (* 1000 60 60 2)
+  ;; every 2 minutes (* 1000 60 2)
   (println "Started up")
-  (println (tweet-sentence))
-  (overtone/every (* 1000 60 60 2) #(println (tweet-sentence)) my-pool))
+  (overtone/every (* 1000 60 2) #(println (tweet-sentence)) my-pool))
