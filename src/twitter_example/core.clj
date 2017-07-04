@@ -90,4 +90,4 @@
   ;; every 2 hours (* 1000 60 60 2)
   ;; every 2 minutes (* 1000 60 2)
   (println "Started up")
-  (overtone/every (* 1000 60 2) #(println (tweet-sentence)) my-pool))
+  (overtone/every (* 1000 60 60 2) #(println (tweet-sentence)) my-pool))
